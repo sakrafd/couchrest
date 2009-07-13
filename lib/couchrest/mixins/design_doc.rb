@@ -13,8 +13,17 @@ module CouchRest
         
         def design_doc
           @design_doc ||= Design.new(default_design_doc)
+
+          # XXX quite the hack :
+          #   uncomment if you need to get a fresh design document from CouchDB. -- oz
+          #
+          # unless @design_doc
+          #   @design_doc ||= Design.new(default_design_doc)
+          #   self.refresh_design_doc
+          # end
+          # @design_doc
         end
-        
+
         def design_doc_id
           "_design/#{design_doc_slug}"
         end
@@ -55,7 +64,8 @@ module CouchRest
         # design_doc attribute
         def save_design_doc
           reset_design_doc unless design_doc_fresh
-          self.design_doc = update_design_doc(design_doc)
+          # Don't let CouchRest update the design and views on each initialization
+          #self.design_doc = update_design_doc(design_doc)
         end
 
         # Save the design doc onto a target database in a thread-safe way,
@@ -68,13 +78,16 @@ module CouchRest
         
         def reset_design_doc
           current = self.database.get(design_doc_id) rescue nil
-          design_doc['_id']  = design_doc_id
+          design_doc['_id'] = design_doc_id
           if current.nil?
             design_doc.delete('_rev')
           else
-            design_doc['_rev'] = current['_rev']
+            # Don't let CouchRest update the design and views on each initialization
+            #design_doc['_rev'] = current['_rev']
+            self.design_doc = current
           end
           self.design_doc_fresh = true
+          self.design_doc
         end
 
         # Writes out a design_doc to a given database, returning the
