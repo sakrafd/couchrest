@@ -96,6 +96,9 @@ module CouchRest
       if has_view?(m)
         query = args.shift || {}
         view(m, query, *args, &block)
+      elsif has_search_view?(m)
+        query = args.shift || {}
+        search_view(m, query, *args, &block)
       else
         super
       end

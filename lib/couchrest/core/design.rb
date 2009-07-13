@@ -5,7 +5,7 @@ module CouchRest
       opts ||= {}
       self['views'] ||= {}
       method_name = "by_#{keys.join('_and_')}"
-      
+
       if opts[:map]
         view = {}
         view['map'] = opts.delete(:map)
@@ -33,7 +33,14 @@ JAVASCRIPT
       self['views'][method_name]['couchrest-defaults'] = opts unless opts.empty?
       method_name
     end
-    
+
+    def search_by *keys
+      search_view_name = "by_#{keys.pop.to_s}"
+      raise StandardError, "No fulltext views found in design #{name}" unless self['fulltext']
+      return "search_#{search_view_name}" if self['fulltext'][search_view_name]
+      raise StandardError, "Missing search view in design #{self.id}"
+    end
+
     # Dispatches to any named view.
     # (using the database where this design doc was saved)
     def view view_name, query={}, &block
@@ -46,6 +53,11 @@ JAVASCRIPT
       view_slug = "#{name}/#{view_name}"
       defaults = (self['views'][view_name] && self['views'][view_name]["couchrest-defaults"]) || {}
       db.view(view_slug, defaults.merge(query), &block)
+    end
+
+    def search_on db, view_name, query={}, &block
+      view_slug = "#{name}/#{view_name}"
+      db.search(view_slug, query, &block)
     end
 
     def name

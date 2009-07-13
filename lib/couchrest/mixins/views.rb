@@ -87,10 +87,23 @@ module CouchRest
           self.design_doc_fresh = false
         end
 
+        # FIXME
+        #   Define search view
+        def search_by(*keys)
+          self.refresh_design_doc
+          self.design_doc.search_by(*keys)
+        end
+
         # returns stored defaults if the there is a view named this in the design doc
         def has_view?(view)
           view = view.to_s
           design_doc && design_doc['views'] && design_doc['views'][view]
+        end
+
+        # returns stored defaults if there is a search view named like this in the design doc
+        def has_search_view?(view)
+          view = view.to_s.sub(/^search_/, '')
+          design_doc && design_doc['fulltext'] && design_doc['fulltext'][view]
         end
 
         # Dispatches to any named view.
@@ -102,6 +115,14 @@ module CouchRest
           db = query.delete(:database) || database
           raw = query.delete(:raw)
           fetch_view_with_docs(db, name, query, raw, &block)
+        end
+
+        # Dispatch to a named search view
+        def search_view(name, query="", opts={}, &block)
+          name = name.to_s.sub(/^search_/, '')
+          db = opts.delete(:database) || database
+          opts[:q] = query
+          fetch_search_view_with_docs(db, name, opts, &block)
         end
 
         # DEPRECATED
@@ -135,6 +156,15 @@ module CouchRest
         end
 
         private
+
+        def fetch_search_view_with_docs(db, name, opts, &block)
+          #if opts.has_key?(:include_docs) && opts[:include_docs] == false
+            #fetch_search_view(db, name, opts, &block)
+          #end
+
+          # FIXME try to handle pagination with the same process as views.
+          design_doc.search_on(db, name, opts, &block)
+        end
 
         def fetch_view_with_docs(db, name, opts, raw=false, &block)
           if raw || (opts.has_key?(:include_docs) && opts[:include_docs] == false)
