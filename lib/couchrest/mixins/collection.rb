@@ -62,6 +62,7 @@ module CouchRest
         private
 
         def create_collection_proxy_for_search(design_doc, search_view_name, opts)
+          opts.merge!({:include_docs => true})
           CollectionProxy.new(@database, design_doc, search_view_name, opts, self, :search)
         end
 
@@ -161,7 +162,8 @@ module CouchRest
 
         def load_target
           unless loaded?
-            results = @database.view(@view_name, @view_options)
+            @view_options.merge!({ :include_docs => true }) if @query_type == :search
+            results = @database.send(@query_type, @view_name, @view_options)
             @target = convert_to_container_array(results)
           end
           @loaded = true
