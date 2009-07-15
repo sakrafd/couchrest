@@ -157,13 +157,10 @@ module CouchRest
 
         private
 
+        # Fetch Couchdb-Lucene search view, and paginate through the results
+        # XXX probably over simplified.
         def fetch_search_view_with_docs(db, name, opts, &block)
-          #if opts.has_key?(:include_docs) && opts[:include_docs] == false
-            #fetch_search_view(db, name, opts, &block)
-          #end
-
-          # FIXME try to handle pagination with the same process as views.
-          design_doc.search_on(db, name, opts, &block)
+          collection_proxy_for_search(db, design_doc, name, opts)
         end
 
         def fetch_view_with_docs(db, name, opts, raw=false, &block)

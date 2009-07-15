@@ -54,7 +54,16 @@ module CouchRest
           create_collection_proxy(options)
         end
 
+        # Same as collection_proxy_for but works on CouchDB-Lucene search views
+        def collection_proxy_for_search(db, design_doc, name, opts)
+          create_collection_proxy_for_search(design_doc, name, opts)
+        end
+
         private
+
+        def create_collection_proxy_for_search(design_doc, search_view_name, opts)
+          CollectionProxy.new(@database, design_doc, search_view_name, opts, self, :search)
+        end
 
         def create_collection_proxy(options)
           design_doc, view_name, view_options = parse_view_options(options)
@@ -91,11 +100,12 @@ module CouchRest
         #
         # The CollectionProxy provides support for paginating over a collection
         # via the paginate, and paginated_each methods.
-        def initialize(database, design_doc, view_name, view_options = {}, container_class = nil)
+        def initialize(database, design_doc, view_name, view_options = {}, container_class = nil, query_type=:view)
           raise ArgumentError, "database is a required parameter" if database.nil?
 
           @database = database
           @container_class = container_class
+          @query_type = query_type
 
           strip_pagination_options(view_options)
           @view_options = view_options
@@ -110,7 +120,7 @@ module CouchRest
         # See Collection.paginate
         def paginate(options = {})
           page, per_page = parse_options(options)
-          results = @database.view(@view_name, pagination_options(page, per_page))
+          results = @database.send(@query_type, @view_name, pagination_options(page, per_page))
           remember_where_we_left_off(results, page)
           convert_to_container_array(results)
         end
@@ -210,7 +220,9 @@ module CouchRest
         def remember_where_we_left_off(results, page)
           last_row = results['rows'].last
           if last_row
-            @last_key = last_row['key']
+            # XXX fill @last_key with a bogus value to avoid changing the pagination_options method
+            #     which works fine with couchdb-lucene results otherwise.
+            @last_key = ( @query_type == :view ? last_row['key'] : last_row['score'] )
             @last_docid = last_row['id']
           end
           @last_page = page
