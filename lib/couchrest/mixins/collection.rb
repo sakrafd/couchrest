@@ -207,7 +207,7 @@ module CouchRest
           if @container_class.nil?
             results
           else
-            results['rows'].collect { |row| @container_class.new(row['doc']) } rescue => []
+            results['rows'].collect { |row| @container_class.new(row['doc']) } unless results['rows'].nil?
           end
         end
 
