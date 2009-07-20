@@ -123,7 +123,20 @@ module CouchRest
           page, per_page = parse_options(options)
           results = @database.send(@query_type, @view_name, pagination_options(page, per_page))
           remember_where_we_left_off(results, page)
-          convert_to_container_array(results)
+          instances = convert_to_container_array(results)
+
+          begin
+            if Kernel.const_get('WillPaginate')
+              total_rows = results['total_rows'].to_i
+              paginated = WillPaginate::Collection.create(page, per_page, total_rows) do |pager|
+                pager.replace(instances)
+              end
+              return paginated
+            end
+          rescue NameError
+            # When not using will_paginate, not much we could do about this. :x
+          end
+          return instances
         end
 
         # See Collection.paginated_each
@@ -194,7 +207,7 @@ module CouchRest
           if @container_class.nil?
             results
           else
-            results['rows'].collect { |row| @container_class.new(row['doc']) } unless results['rows'].nil?
+            results['rows'].collect { |row| @container_class.new(row['doc']) } rescue => []
           end
         end
 
